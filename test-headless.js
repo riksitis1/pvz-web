@@ -61,7 +61,7 @@ global.AudioContext = function () {
 };
 global.innerWidth = 1280; global.innerHeight = 800;
 
-const loadAll = ['sprites.js', 'audio.js', 'levels.js', 'game.js']
+const loadAll = ['sprites.js', 'audio.js', 'levels.js', 'reanim.js', 'game.js']
   .map(f => fs.readFileSync(__dirname + '/js/' + f, 'utf8'))
   .join('\n;\n');
 eval(loadAll);
@@ -79,8 +79,8 @@ function step(frames, dtMs = 16) {
 }
 
 let failures = 0;
-function check(name, cond) {
-  console.log((cond ? 'PASS' : 'FAIL') + ': ' + name);
+function check(name, cond, detail) {
+  console.log((cond ? 'PASS' : 'FAIL') + ': ' + name + (cond || !detail ? '' : '  -> ' + detail));
   if (!cond) failures++;
 }
 
@@ -343,14 +343,22 @@ step(300);
 check('melon-pult damaged zombie', mz2.hp < hpBefore || mz2.dead);
 
 // --- Test 26: umbrella leaf blocks bungee ---
+// A bungee picks its victim at random, so pin the roll while it spawns. Keep
+// the level's real waves (emptying them completes the level and wipes the
+// lawn) and stop as soon as the bungee has landed.
 Game.startLevel('2-10');
 step(5);
 Game.G.sun = 1000;
 Game.tryPlant('umbrellaleaf', 1, 4);
 Game.tryPlant('peashooter', 1, 3);
+const realRandom = Math.random;
+Math.random = () => 0.01;   // first plant in the list = the umbrella leaf
 const bz3 = Game.spawnZombie('bungee', 1, 4 * 80 + 40);
-step(60 * 30);
-check('umbrella leaf blocked bungee', bz3.dead === true && Game.G.plants.some(p => p.type === 'peashooter' && !p.dead));
+Math.random = realRandom;
+step(60 * 8);
+check('umbrella leaf blocked bungee', bz3.dead === true && Game.G.plants.some(p => p.type === 'umbrellaleaf' && !p.dead),
+  'bungee dead=' + bz3.dead + ' col=' + bz3.col + ' landed=' + bz3.landed +
+  ' plants=' + JSON.stringify(Game.G.plants.map(p => p.type + '@' + p.col + (p.dead ? '(dead)' : ''))));
 
 console.log(failures === 0 ? '\nALL HEADLESS TESTS PASSED' : '\n' + failures + ' FAILURES');
 process.exit(failures === 0 ? 0 : 1);

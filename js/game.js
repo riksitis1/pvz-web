@@ -214,7 +214,7 @@ function tryPlant(type, row, col) {
   G.sun -= def.cost;
   const p = {
     type, row, col, x: LAWN_X + col * TILE_W + TILE_W / 2, y: LAWN_Y + row * TILE_H + TILE_H - 8,
-    hp: def.hp, maxHp: def.hp, t: 0, attackT: 0, sunT: type === 'sunflower' ? 8 : 12,
+    hp: def.hp, maxHp: def.hp, t: 0, attackT: 0, sunT: type === 'sunflower' ? 3 + Math.random() * 9.5 : 12,
     armed: type === 'potatomine' ? 0 : 1, chewing: 0, jumpT: -1, lifeT: (type === 'puffshroom' || type === 'seashroom') ? 20 : -1,
     big: type === 'sunshroom' ? 0 : 1, asleep: MUSHROOMS.includes(type) && G.level.theme === 'day',
     eating: false, hide: false, magnetT: 0, coinT: 20, fuse: -1, dead: false, spawnT: 0.3,
@@ -281,7 +281,7 @@ function pultTarget(p) {
 }
 
 function makeProjectile(kind, row, x, y, dmg, opts = {}) {
-  const speeds = { pea: 220, firepea: 220, snowpea: 220, fume: 200, puff: 180, spike: 260, star: 200, cabbage: 0, kernel: 0, butter: 0, melon: 0, wintermelon: 0, basketball: 0 };
+  const speeds = { pea: 333, firepea: 333, snowpea: 333, fume: 300, puff: 250, spike: 360, star: 300, cabbage: 0, kernel: 0, butter: 0, melon: 0, wintermelon: 0, basketball: 0 };
   let vx = opts.vx ?? speeds[kind] ?? 220;
   let vy = opts.vy ?? 0;
   if (opts.arc && opts.targetX !== undefined) {
@@ -379,12 +379,15 @@ function killZombie(z, silent) {
 // ---------- zombies ----------
 function spawnZombie(type, row, x) {
   const def = ZOMBIE_DEFS[type];
-  const armorMap = { conehead: 360, buckethead: 1100, screendoor: 900, football: 1400, dolphinrider: 300, balloon: 200 };
+  // Armour is tracked separately from body HP: the body always has the
+  // 270 HP of a basic zombie and the accessory soaks damage first.
+  const armorMap = { conehead: 370, buckethead: 1100, screendoor: 1100, football: 1400, balloon: 20, polevault: 500, dolphinrider: 230 };
+  const spd = def.spdMin !== undefined ? def.spdMin + Math.random() * (def.spdMax - def.spdMin) : def.speed;
   const z = {
     type, row, x: x !== undefined ? x : W + 30 + Math.random() * 40,
     y: LAWN_Y + row * TILE_H + TILE_H - 8,
     hp: def.hp, maxHp: def.hp, armor: armorMap[type] || 0, armorMax: armorMap[type] || 0,
-    speed: def.speed, t: Math.random() * 10, state: 'walk', slowT: 0, freezeT: 0, hitT: 0,
+    speed: spd, t: Math.random() * 10, state: 'walk', slowT: 0, freezeT: 0, hitT: 0,
     eatT: 0, target: null, vaultT: -1, jumpT: -1, fallT: -1, swim: false, underground: false,
     digT: 0, dir: -1, fuse: type === 'jackinthebox' ? 12 : -1, threwImp: false, fled: false,
     summonT: type === 'dancing' ? 6 : -1, dead: false, eatAnim: 0,
@@ -565,7 +568,7 @@ function eatPlant(z, p, dt) {
   z.eatAnim += dt;
   if (z.eatAnim > 0.5 || z.type === 'gargantuar') {
     z.eatAnim = 0;
-    p.hp -= z.type === 'gargantuar' ? 99999 : 25;
+    p.hp -= z.type === 'gargantuar' ? 99999 : 50;
     Audio2.sfx('eat');
     spawnParticles(p.x, p.y - 20, '#7cb342', 3);
     if (p.hp <= 0) {
@@ -645,7 +648,7 @@ function updatePlants(dt) {
     if (p.type === 'sunflower' || p.type === 'twinsunflower') {
       p.sunT -= dt;
       if (p.sunT <= 0) {
-        p.sunT = 24;
+        p.sunT = 25;
         addSun(p.x + (Math.random() * 20 - 10), p.y - 30, p.type === 'twinsunflower' ? 50 : 25, false);
         Audio2.sfx('pop');
       }
@@ -655,7 +658,7 @@ function updatePlants(dt) {
       if (p.big >= 1) p.big = 1;
       p.sunT -= dt;
       if (p.sunT <= 0) {
-        p.sunT = 24;
+        p.sunT = 25;
         addSun(p.x, p.y - 20, p.big >= 1 ? 25 : 15, false);
       }
     }
@@ -670,7 +673,7 @@ function updatePlants(dt) {
     }
     if (p.type === 'potatomine') {
       if (p.armed < 1) {
-        p.armed += dt / 14;
+        p.armed += dt / 15;
         if (p.armed >= 1) {
           p.armed = 1;
           const z = G.zombies.find(z => !z.dead && z.row === p.row && Math.abs(z.x - p.x) < 30 && !(z.type === 'balloon' && z.armor > 0));
@@ -817,7 +820,7 @@ function updatePlants(dt) {
       if (!inRange) { p.attackT = 0; continue; }
       p.attackT -= dt;
       if (p.attackT <= 0) {
-        const rates = { peashooter: 1.4, repeater: 1.4, snowpea: 1.4, fumeshroom: 1.4, puffshroom: 1.4, scaredyshroom: 1.4, gatlingpea: 1.4, splitpea: 1.4, starfruit: 1.4, cactus: 1.4, threepeater: 1.4, cabbagepult: 2.8, kernelpult: 2.8, melonpult: 2.8, wintermelon: 2.8 };
+        const rates = { peashooter: 1.5, repeater: 1.5, snowpea: 1.5, fumeshroom: 1.5, puffshroom: 1.5, scaredyshroom: 1.5, gatlingpea: 1.5, splitpea: 1.5, starfruit: 1.5, cactus: 1.5, threepeater: 1.5, cabbagepult: 3.0, kernelpult: 3.0, melonpult: 3.0, wintermelon: 3.0 };
         p.attackT = rates[p.type] || 1.4;
         p.attack = 0.25;
         const py = p.y - 34;
@@ -840,7 +843,7 @@ function updatePlants(dt) {
           case 'threepeater':
             for (const r of [p.row - 1, p.row, p.row + 1]) if (r >= 0 && r < ROWS) fire('pea', 20);
             Audio2.sfx('pea'); break;
-          case 'cabbagepult': G.projectiles.push(makeProjectile('cabbage', p.row, p.x, py, 20, { vx: 140, vy: -240, arc: 1, splash: 40, targetX: pultTarget(p) })); Audio2.sfx('throw'); break;
+          case 'cabbagepult': G.projectiles.push(makeProjectile('cabbage', p.row, p.x, py, 40, { vx: 140, vy: -240, arc: 1, splash: 40, targetX: pultTarget(p) })); Audio2.sfx('throw'); break;
           case 'kernelpult': {
             const tx = pultTarget(p);
             if (Math.random() < 0.3) G.projectiles.push(makeProjectile('butter', p.row, p.x, py, 0, { vx: 140, vy: -240, arc: 1, targetX: tx }));
@@ -1099,21 +1102,20 @@ function drawEntities() {
     }
     if (p.type === 'pumpkin') {
       const inner = G.plants.find(q => q !== p && q.row === p.row && q.col === p.col && q.underPumpkin);
-      Sprites.drawPlant('pumpkin', ctx, p.x, p.y, G.time, { hpFrac: p.hp / p.maxHp });
-      if (inner) Sprites.drawPlant(inner.type, ctx, p.x, p.y, G.time, {});
+      Reanim.drawPlant('pumpkin', ctx, p.x, p.y, G.time, { hpFrac: p.hp / p.maxHp });
+      if (inner) Reanim.drawPlant(inner.type, ctx, p.x, p.y, G.time, {});
       return;
     }
-    const opts = { hpFrac: p.hp / p.maxHp, armed: p.armed, chewing: p.chewing > 0, attack: p.attack, hide: p.hide, big: p.big, lifeFrac: p.lifeT > 0 ? p.lifeT / 20 : 1, jumpT: p.jumpT, eating: p.eatAnim > 0 };
-    if (p.type === 'imitater') opts.copyDraw = (c, x, y, t, o) => Sprites.drawPlant(G.imitaterCopy || 'peashooter', c, x, y, t, o);
+    const opts = { hpFrac: p.hp / p.maxHp, armed: p.armed, chewing: p.chewing > 0, attack: p.attack, hide: p.hide, big: p.big, lifeFrac: p.lifeT > 0 ? p.lifeT / 20 : 1, jumpT: p.jumpT, eating: p.eatAnim > 0, shooting: p.attack > 0 };
     if (p.asleep) {
       ctx.save(); ctx.translate(p.x, p.y);
-      Sprites.drawPlant(p.type, ctx, 0, 0, G.time * 0.3, opts);
+      Reanim.drawPlant(p.type, ctx, 0, 0, G.time * 0.3, opts);
       ctx.fillStyle = '#1a237e'; ctx.font = 'bold 14px Trebuchet MS'; ctx.textAlign = 'center';
       const zf = 1 + Math.sin(G.time * 2) * 0.2;
       ctx.fillText('Z', 14, -30); ctx.font = 'bold 11px Trebuchet MS'; ctx.fillText('z', 22, -38);
       ctx.restore();
     } else {
-      Sprites.drawPlant(p.type, ctx, p.x, p.y, G.time, opts);
+      Reanim.drawPlant(p.type, ctx, p.x, p.y, G.time, opts);
     }
     if (p.type === 'spikewalk' && p.attackT > 0) {}
     }});
@@ -1123,10 +1125,17 @@ function drawEntities() {
   for (const d of drawList) d.fn();
 }
 
+// The bungee reanim is its own drop/grab/raise cycle rather than a walk loop.
+function bungeeState(z) {
+  if (!z.landed) return 'anim_drop';
+  if (z.stole) return 'anim_hold';
+  return 'anim_grab';
+}
+
 function drawZombie(z) {
   ctx.save();
   if (z.type === 'bungee') {
-    Sprites.drawZombie('bungee', ctx, z.x, z.y + 70, G.time, {});
+    Reanim.drawZombie('bungee', ctx, z.x, z.y + 70, G.time, { state: bungeeState(z) });
     ctx.restore();
     return;
   }
@@ -1134,11 +1143,16 @@ function drawZombie(z) {
     slow: z.slowT > 0, armor: z.armorMax > 0 ? z.armor / z.armorMax : 0,
     eat: z.state === 'eat', fall: z.fallT >= 0 ? z.fallT : 0,
     vault: z.vaultT >= 0, jumpT: z.jumpT, swim: z.swim, underground: z.underground,
+    // drive the original reanim state machine
+    state: z.state === 'eat' ? 'anim_eat'
+      : z.swim ? 'anim_swim'
+      : (z.type === 'dancing' || z.type === 'backupdancer') ? 'anim_armraise'
+      : z.fallT >= 0 ? 'anim_fall'
+      : 'anim_walk',
   };
   if (z.hypno) {
     ctx.save();
-    Sprites.drawZombie(z.type, ctx, z.x, z.y, G.time, opts);
-    ctx.globalCompositeOperation = 'source-atop';
+    Reanim.drawZombie(z.type, ctx, z.x, z.y, G.time, opts);
     ctx.restore();
     ctx.save(); ctx.translate(z.x, z.y);
     ctx.globalAlpha = 0.3; circ(ctx, 0, -24, 24, '#f48fb1', null);
@@ -1149,17 +1163,17 @@ function drawZombie(z) {
     return;
   }
   if (z.freezeT > 0) {
-    Sprites.drawZombie(z.type, ctx, z.x, z.y, 0, opts);
+    Reanim.drawZombie(z.type, ctx, z.x, z.y, 0, opts);
     ctx.globalAlpha = 0.4; circ(ctx, z.x, z.y - 24, 26, '#b3e5fc', '#4fc3f7', 2);
     ctx.globalAlpha = 1;
     return;
   }
   if (z.hitT > 0) {
-    Sprites.drawZombie(z.type, ctx, z.x, z.y, G.time, opts);
+    Reanim.drawZombie(z.type, ctx, z.x, z.y, G.time, opts);
     ctx.globalAlpha = 0.5; circ(ctx, z.x, z.y - 24, 24, '#ffffff', null);
     ctx.globalAlpha = 1;
   } else {
-    Sprites.drawZombie(z.type, ctx, z.x, z.y, G.time, opts);
+    Reanim.drawZombie(z.type, ctx, z.x, z.y, G.time, opts);
   }
   if (z.hp < z.maxHp && z.armor <= 0) {
     ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.fillRect(z.x - 14, z.y - 78, 28, 4);
@@ -1262,7 +1276,7 @@ function drawTopBar() {
     rr(ctx, px, 6, 56, 38, 6, sel ? '#a1887f' : '#6d4c41', sel ? '#ffeb3b' : '#3e2723', 2);
     ctx.shadowBlur = 0;
     ctx.save(); ctx.translate(px + 28, 25); ctx.scale(0.55, 0.55);
-    Sprites.drawPlant(pk, ctx, 0, 0, G.time, {});
+    Reanim.drawPlant(pk, ctx, 0, 0, G.time, {});
     ctx.restore();
     ctx.fillStyle = afford ? '#fff' : '#ef9a9a';
     ctx.font = 'bold 11px Trebuchet MS'; ctx.textAlign = 'center';
@@ -1298,7 +1312,7 @@ function drawTopBar() {
   ctx.fillStyle = '#8bc34a';
   if (prog > 0) { rr(ctx, bx, 16, bw * Math.min(1, prog), 10, 5, '#8bc34a', null); }
   ctx.save(); ctx.translate(bx + bw * Math.min(1, prog), 21); ctx.scale(0.5, 0.5);
-  Sprites.drawZombie('basic', ctx, 0, 0, G.time, {});
+  Reanim.drawZombie('basic', ctx, 0, 0, G.time, {});
   ctx.restore();
   ctx.fillStyle = '#fff'; ctx.font = 'bold 12px Trebuchet MS'; ctx.textAlign = 'right';
   ctx.fillText(G.levelId ? 'LEVEL ' + G.levelId : '', bx - 14, 27);
@@ -1340,7 +1354,7 @@ function drawCursor() {
         ctx.fillRect(LAWN_X + col * TILE_W, LAWN_Y + row * TILE_H, TILE_W, TILE_H);
       }
       ctx.save(); ctx.translate(x, y); ctx.scale(0.8, 0.8);
-      Sprites.drawPlant(pk, ctx, 0, 0, G.time, {});
+      Reanim.drawPlant(pk, ctx, 0, 0, G.time, {});
       ctx.restore();
       ctx.globalAlpha = 1;
     } else if (G.shovelMode) {
@@ -1399,11 +1413,11 @@ function drawMenuBackground() {
   ctx.fillStyle = '#8d6e63'; ctx.fillRect(0, 120, LAWN_X - 6, 300);
   poly(ctx, [[-10, 122], [LAWN_X - 6, 122], [(LAWN_X - 6) / 2, 88]], '#a1887f', '#3e2723', 2);
   // decorative plants
-  Sprites.drawPlant('sunflower', ctx, 300, 480, G.time, {});
-  Sprites.drawPlant('peashooter', ctx, 420, 500, G.time + 1, {});
-  Sprites.drawPlant('wallnut', ctx, 540, 470, G.time + 2, {});
-  Sprites.drawZombie('basic', ctx, 680, 520, G.time, {});
-  Sprites.drawZombie('conehead', ctx, 730, 540, G.time + 3, {});
+  Reanim.drawPlant('sunflower', ctx, 300, 480, G.time, { scale: 1.2 });
+  Reanim.drawPlant('peashooter', ctx, 420, 500, G.time + 1, { scale: 1.2 });
+  Reanim.drawPlant('wallnut', ctx, 540, 470, G.time + 2, { scale: 1.2 });
+  Reanim.drawZombie('basic', ctx, 680, 520, G.time, { scale: 1.2 });
+  Reanim.drawZombie('conehead', ctx, 730, 540, G.time + 3, { scale: 1.2 });
 }
 
 // ---------- overlays ----------
@@ -1491,8 +1505,8 @@ function renderAlmanac() {
     cv.width = 60; cv.height = 60;
     const c = cv.getContext('2d');
     c.translate(30, 55);
-    if (albTab === 'plants') Sprites.drawPlant(id, c, 0, 0, G.time, {});
-    else Sprites.drawZombie(id, c, 0, 0, G.time, {});
+    if (albTab === 'plants') Reanim.drawPlant(id, c, 0, 0, G.time, {});
+    else Reanim.drawZombie(id, c, 0, 0, G.time, {});
     div.appendChild(cv);
     const txt = document.createElement('div');
     txt.innerHTML = `<b style="color:#aed581">${d.name}</b><br><span style="font-size:13px;">${d.desc}</span>` +
@@ -1543,7 +1557,7 @@ function renderZen() {
       const c = cv.getContext('2d');
       const s = [0.4, 0.7, 1][z.stage];
       c.translate(50, 95); c.scale(s, s);
-      Sprites.drawPlant(z.type, c, 0, 0, G.time, {});
+      Reanim.drawPlant(z.type, c, 0, 0, G.time, {});
       d.appendChild(cv);
       const lbl = document.createElement('div');
       lbl.style.cssText = 'position:absolute; bottom:2px; width:100%; text-align:center; color:#fff; font-size:11px;';
@@ -1691,5 +1705,9 @@ Audio2.setSfxVol(save.options.sfx / 100);
 Audio2.setMuted(save.options.mute);
 showOverlay('menu');
 G.scene = 'menu';
+G.reanimReady = false;
+if (typeof Reanim !== 'undefined' && typeof document !== 'undefined' && typeof fetch === 'function') {
+  Reanim.load(() => { G.reanimReady = true; });
+}
 requestAnimationFrame(loop);
 })();

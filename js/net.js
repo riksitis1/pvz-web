@@ -205,7 +205,7 @@ const Net = (() => {
       cv.width = 40; cv.height = 40;
       const c = cv.getContext('2d');
       c.translate(20, 38); c.scale(0.45, 0.45);
-      Sprites.drawZombie(zid, c, 0, 0, 1, {});
+      Reanim.drawZombie(zid, c, 0, 0, 1, {});
       d.appendChild(cv);
       const nm = document.createElement('div');
       nm.textContent = def.name.replace(' Zombie', '');

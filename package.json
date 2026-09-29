@@ -4,7 +4,8 @@
   "description": "Plants vs Zombies HTML5 recreation with online 1v1 multiplayer",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node test-reanim.js && node test-levels.js && node test-headless.js && node test-mp.js"
   },
   "dependencies": {
     "ws": "^8.18.0"

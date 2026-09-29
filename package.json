@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node test-reanim.js && node test-levels.js && node test-headless.js && node test-mp.js"
+    "test": "node test-reanim.js && node test-levels.js && node test-headless.js && node test-mp.js",
+    "test:sprites": "node test-sprites-http.js"
   },
   "dependencies": {
     "ws": "^8.18.0"

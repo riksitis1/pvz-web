@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plants vs. Zombies</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #1a1a2e; overflow: hidden; font-family: 'Trebuchet MS', Verdana, sans-serif; }
+  #wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+  #game { image-rendering: auto; cursor: none; box-shadow: 0 0 60px rgba(0,0,0,.8); }
+  .overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; z-index: 10; }
+  .hidden { display: none !important; }
+  .btn { background: linear-gradient(#8bc34a, #558b2f); border: 3px solid #33691e; border-radius: 10px; color: #fff;
+         font-family: 'Trebuchet MS', sans-serif; font-weight: bold; font-size: 20px; padding: 10px 28px; margin: 6px;
+         cursor: pointer; text-shadow: 1px 2px 2px rgba(0,0,0,.5); min-width: 240px; text-align: center; }
+  .btn:hover { filter: brightness(1.15); }
+  .btn.small { font-size: 15px; padding: 6px 16px; min-width: 140px; }
+  .btn:disabled { filter: grayscale(.8) brightness(.7); cursor: default; }
+  .panel { background: rgba(20, 30, 15, .92); border: 3px solid #558b2f; border-radius: 14px; padding: 24px 32px;
+           color: #e8f5e9; text-align: center; max-width: 640px; max-height: 86vh; overflow-y: auto; }
+  .panel h2 { color: #aed581; margin-bottom: 12px; text-shadow: 1px 2px 2px #000; }
+  .panel input[type=text] { padding: 8px 12px; font-size: 16px; border-radius: 8px; border: 2px solid #558b2f; width: 220px; margin: 6px; }
+  #chatbox { position: absolute; left: 10px; bottom: 10px; width: 300px; z-index: 20; }
+  #chatlog { max-height: 120px; overflow-y: auto; background: rgba(0,0,0,.55); border-radius: 8px; padding: 6px 8px; font-size: 13px; color: #fff; }
+  #chatlog div { margin: 1px 0; }
+  #chatinput { width: 100%; margin-top: 4px; padding: 6px 8px; border-radius: 8px; border: 2px solid #558b2f; font-size: 13px; }
+  #zombiebar { position: absolute; top: 0; left: 0; right: 0; z-index: 15; display: flex; align-items: center; gap: 8px;
+               background: linear-gradient(rgba(30,10,40,.92), rgba(30,10,40,.75)); padding: 6px 12px; flex-wrap: wrap; }
+  .zcard { background: #2a1a3a; border: 2px solid #7b1fa2; border-radius: 8px; padding: 4px 8px; color: #e1bee7;
+           font-size: 12px; cursor: pointer; text-align: center; min-width: 74px; }
+  .zcard:hover { border-color: #ce93d8; }
+  .zcard.sel { border-color: #ffeb3b; background: #4a2a5a; }
+  .zcard.cant { opacity: .45; cursor: default; }
+  .zcard .cost { color: #ff8a65; font-weight: bold; }
+  #braincount { color: #ce93d8; font-weight: bold; font-size: 18px; text-shadow: 1px 1px 2px #000; }
+  .stat { display: flex; justify-content: space-between; gap: 30px; margin: 3px 0; font-size: 15px; }
+  .lvlgrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 14px 0; }
+  .lvlnode { background: #33691e; border: 2px solid #1b5e20; border-radius: 10px; padding: 12px 6px; color: #fff;
+              font-weight: bold; cursor: pointer; font-size: 14px; }
+  .lvlnode:hover { filter: brightness(1.2); }
+  .lvlnode.locked { background: #444; border-color: #222; cursor: default; opacity: .6; }
+  .lvlnode .star { color: #ffeb3b; font-size: 16px; }
+  ::-webkit-scrollbar { width: 8px; } ::-webkit-scrollbar-thumb { background: #558b2f; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="game" width="800" height="600"></canvas></div>
+
+<div id="menu" class="overlay">
+  <div style="margin-bottom:18px; text-align:center;">
+    <div style="font-size:52px; font-weight:900; color:#aed581; text-shadow: 3px 3px 0 #1b5e20, 6px 6px 0 rgba(0,0,0,.4); letter-spacing:2px;">PLANTS <span style="color:#ef5350;">vs.</span> ZOMBIES</div>
+    <div style="color:#c5e1a5; font-size:14px; margin-top:4px; text-shadow:1px 1px 2px #000;">WEB EDITION</div>
+  </div>
+  <button class="btn" id="btnAdventure">Adventure</button>
+  <button class="btn" id="btnMultiplayer">Multiplayer</button>
+  <button class="btn" id="btnAlmanac">Almanac</button>
+  <button class="btn" id="btnZen">Zen Garden</button>
+  <button class="btn" id="btnOptions">Options</button>
+  <button class="btn" id="btnQuit">Quit</button>
+</div>
+
+<div id="levelselect" class="overlay hidden">
+  <div class="panel">
+    <h2 id="lsTitle">Adventure</h2>
+    <div class="lvlgrid" id="lsGrid"></div>
+    <button class="btn small" id="lsBack">Back</button>
+  </div>
+</div>
+
+<div id="lobby" class="overlay hidden">
+  <div class="panel">
+    <h2>Multiplayer Lobby</h2>
+    <div id="lobbyHost">
+      <p>Host a lobby and share the room code:</p>
+      <button class="btn" id="btnHost">Host Lobby</button>
+      <p style="margin-top:14px;">Or join with a code:</p>
+      <input type="text" id="joinCode" maxlength="4" placeholder="CODE" style="text-transform:uppercase;">
+      <button class="btn small" id="btnJoin">Join</button>
+      <p style="margin-top:14px; font-size:13px;">Server: <input type="text" id="serverUrl" placeholder="default (this server)" style="width:200px;"> <button class="btn small" id="btnSaveUrl">Save</button></p>
+    </div>
+    <div id="lobbyRoom" class="hidden">
+      <p>Room Code: <span id="roomCode" style="font-size:28px; font-weight:bold; color:#ffeb3b; letter-spacing:4px;"></span></p>
+      <p id="lobbyStatus">Waiting for opponent...</p>
+      <div id="lobbyControls" class="hidden">
+        <p>Level: <select id="mpLevel" style="padding:4px; border-radius:6px;"></select></p>
+        <p>Plants player: <select id="mpRole" style="padding:4px; border-radius:6px;">
+          <option value="host">Host</option><option value="guest">Guest</option></select></p>
+        <button class="btn" id="btnStartMp">Start Match</button>
+      </div>
+      <button class="btn small" id="btnLeaveLobby">Leave</button>
+    </div>
+  </div>
+</div>
+
+<div id="almanac" class="overlay hidden">
+  <div class="panel" style="max-width:720px;">
+    <h2>Almanac</h2>
+    <div style="margin-bottom:10px;">
+      <button class="btn small" id="albPlants">Plants</button>
+      <button class="btn small" id="albZombies">Zombies</button>
+      <button class="btn small" id="albBack">Back</button>
+    </div>
+    <div id="albList" style="text-align:left; max-height:50vh; overflow-y:auto;"></div>
+  </div>
+</div>
+
+<div id="zengarden" class="overlay hidden">
+  <div class="panel">
+    <h2>Zen Garden</h2>
+    <p id="zenCoins">Coins: 0</p>
+    <p style="margin:8px 0;">Buy a plant, then click a pot to plant it. Water it to grow.</p>
+    <div style="margin:10px 0;" id="zenShop"></div>
+    <div id="zenPots" style="display:flex; gap:14px; justify-content:center; margin:12px 0;"></div>
+    <button class="btn small" id="zenBack">Back</button>
+  </div>
+</div>
+
+<div id="options" class="overlay hidden">
+  <div class="panel">
+    <h2>Options</h2>
+    <p style="margin:8px 0;">Music Volume <input type="range" id="optMusic" min="0" max="100" value="60"></p>
+    <p style="margin:8px 0;">SFX Volume <input type="range" id="optSfx" min="0" max="100" value="80"></p>
+    <p style="margin:8px 0;"><label><input type="checkbox" id="optMute"> Mute All</label></p>
+    <button class="btn small" id="optBack">Back</button>
+  </div>
+</div>
+
+<div id="pause" class="overlay hidden">
+  <div class="panel">
+    <h2>Paused</h2>
+    <button class="btn" id="btnResume">Resume</button>
+    <button class="btn" id="btnRestart">Restart</button>
+    <button class="btn" id="btnQuitMenu">Quit to Main Menu</button>
+  </div>
+</div>
+
+<div id="gameover" class="overlay hidden">
+  <div class="panel">
+    <h2 style="color:#ef5350;">THE ZOMBIES ATE YOUR BRAINS!</h2>
+    <button class="btn" id="btnGoRestart">Restart</button>
+    <button class="btn" id="btnGoMenu">Main Menu</button>
+  </div>
+</div>
+
+<div id="levelcomplete" class="overlay hidden">
+  <div class="panel">
+    <h2 style="color:#ffeb3b;">LEVEL COMPLETE!</h2>
+    <p id="lcReward" style="margin:10px 0; font-size:17px;"></p>
+    <p id="lcCoins" style="margin:6px 0;"></p>
+    <button class="btn" id="btnLcNext">Continue</button>
+  </div>
+</div>
+
+<div id="mpend" class="overlay hidden">
+  <div class="panel">
+    <h2 id="mpendTitle">Match Over</h2>
+    <div id="mpendStats"></div>
+    <button class="btn" id="btnRematch">Rematch</button>
+    <button class="btn" id="btnMpMenu">Main Menu</button>
+  </div>
+</div>
+
+<div id="chatbox" class="hidden">
+  <div id="chatlog"></div>
+  <input type="text" id="chatinput" maxlength="120" placeholder="Press Enter to chat...">
+</div>
+
+<div id="zombiebar" class="hidden">
+  <span id="braincount">🧠 0</span>
+  <span id="zombiemsg" style="color:#ce93d8; font-size:13px;">Select a zombie, then click a tile to spawn</span>
+  <span id="zcards" style="display:flex; gap:6px; flex-wrap:wrap;"></span>
+</div>
+
+<script src="js/sprites.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/levels.js"></script>
+<script src="js/game.js"></script>
+<script src="js/net.js"></script>
+</body>
+</html>
